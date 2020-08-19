@@ -59,9 +59,9 @@ static void usage(int errs)
            "\n", progname, VERSION, firmware_binaryA, firmware_binaryB, firmware_binaryC);
 
     printf("Example:\n"
-           "Update firmware      : ./epstps2iap -a rankA.bin -b rankB.bin -c rankC.bin -u\n"
-           "Get Firmware Version : ./epstps2iap -g\n"
-           "Get Module ID        : ./epstps2iap -m\n");
+           "Update firmware      : ./epstps2_updater -a rankA.bin -b rankB.bin -c rankC.bin -u\n"
+           "Get Firmware Version : ./epstps2_updater -g\n"
+           "Get Module ID        : ./epstps2_updater -m\n");
     exit(!!errs);
 }
 
