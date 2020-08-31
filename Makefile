@@ -1,5 +1,5 @@
 #elan trackpoint updater Makefile
-CC = gcc
+CC ?= gcc
 
 CFLAGS += -g -Wall -fexceptions
 
