@@ -15,7 +15,8 @@
 #include <stdint.h>
 #include <time.h>
 
-#define VERSION "1.0"
+#define VERSION "1.4"
+#define VERSION_SUB "0"
 
 #define POLL_TIMEOUT            180000
 #define POLL_TIMEOUT_RETRY      1800
@@ -96,6 +97,7 @@
 #define GET_FWVER_STATE  	1
 #define GET_BINVER_STATE 	2
 #define GET_MODULEID_STATE 	3
+#define GET_SWVER_STATE		4
 
 typedef struct _FLASH_HANDLER
 {
