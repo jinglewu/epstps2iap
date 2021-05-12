@@ -20,7 +20,7 @@ static char *firmware_binaryC = "elan_pst_rankC.bin";	/* firmware blob */
 static int serio_num=-1;
 /* Command line parsing related */
 static char *progname;
-static char *short_opts = ":a:b:c:s:gdmpuP";
+static char *short_opts = ":a:b:c:s:gdmpuPz";
 static const struct option long_opts[] = {
     /* name    hasarg *flag val */
 {"rank A bin",      1,   NULL, 'a'},
@@ -33,6 +33,7 @@ static const struct option long_opts[] = {
 {"help",     0,   NULL, '?'},
 {"message",    0,   NULL, 'p'},
 {"progress",    0,   NULL, 'P'},
+{"version",    0,   NULL, 'z'},
 {"debug",    0,   NULL, 'd'},
 {NULL,       0,   NULL, 0},
 };
@@ -54,6 +55,7 @@ static void usage(int errs)
            "  -u,--update firmware      	Update Firmware\n"
            "  -p,--print message            Print Message\n"
            "  -P,--print progress           Print Progress\n"
+	   "  -z,--version              	Version\n"
            "  -d,--debug               	Debug ps2 Message\n"
            "  -?,--help               	Show this message\n"
            "\n", progname, VERSION, firmware_binaryA, firmware_binaryB, firmware_binaryC);
@@ -111,6 +113,9 @@ static int parse_cmdline(int argc, char *argv[])
         case 'P':
             print_progress = 1;
             break;
+	case 'z':			
+	    state = GET_SWVER_STATE;
+	    break;
         case 'd':
             extended_ps2_exercise = 1;
             break;
@@ -714,9 +719,9 @@ static int read_module_id(unsigned char *SampleVersion,unsigned short *UniqueID)
     output_message("read_module_id()\n");
     if(ps2_rawctrl_command(Commands, (int)sizeof(Commands),res,3)>=0)  {
         *SampleVersion = res[0];
-        *UniqueID = res[1] << 8 | res[2];
-        if(*UniqueID==0x0000)
-            *UniqueID=0x0D00;
+        *UniqueID = res[1];
+        if(*UniqueID==0x00)
+            *UniqueID=0x0D;
         if(print_message)
             printf("ReadUniqueID SampleVersion 0x%x UniqueID 0x%x%x\n", res[0],res[1],res[2]);
     }
@@ -1410,7 +1415,7 @@ static void get_fw_version()
             printf("\nInitilize Device Fail : %d\n", m_FlashHandle.ERROR_CODE);
         else
             printf("%d\n", m_FlashHandle.ERROR_CODE);
-        enable_pst();
+        //enable_pst();
         return ;
     }
     if(read_fw_version(&fw_ver)<0)
@@ -1441,7 +1446,7 @@ static void get_module_id()
             printf("\nInitilize Device Fail : %d\n", m_FlashHandle.ERROR_CODE);
         else
             printf("%d\n", m_FlashHandle.ERROR_CODE);
-        enable_pst();
+        //enable_pst();
         return ;
     }
 
@@ -1479,6 +1484,11 @@ int main(int argc, char *argv[])
         get_module_id();
         return 0;
     }
+    else if(state==GET_SWVER_STATE)
+    {
+	printf("Version: %s%s\n", VERSION, VERSION_SUB);
+	return 0;
+    }
     else if(state==-1)
     {
         return 0;
@@ -1514,4 +1524,5 @@ int main(int argc, char *argv[])
     return 0;
 
 }
+
 
