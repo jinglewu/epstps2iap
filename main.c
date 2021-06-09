@@ -2,7 +2,7 @@
 #include "main.h"
 
 static int device_fd=-1;
-static int dev_serio_id=-1;
+static int dev_serio_id=1;
 static int print_message=0;
 static int print_progress=0;
 static int extended_ps2_exercise;
@@ -20,13 +20,13 @@ static char *firmware_binaryC = "elan_pst_rankC.bin";	/* firmware blob */
 static int serio_num=-1;
 /* Command line parsing related */
 static char *progname;
-static char *short_opts = ":a:b:c:s:gdmpuPz";
+static char *short_opts = ":a:b:c:s:gdmpuPzCR";
 static const struct option long_opts[] = {
     /* name    hasarg *flag val */
-{"rank A bin",      1,   NULL, 'a'},
-{"rank B bin",      1,   NULL, 'b'},
-{"rank C bin",      1,   NULL, 'c'},
-{"update firmware",      0,   NULL, 'u'},
+{"rank_A",      1,   NULL, 'a'},
+{"rank_B",      1,   NULL, 'b'},
+{"rank_C",      1,   NULL, 'c'},
+{"update",      0,   NULL, 'u'},
 {"serionum",   1,   NULL, 's'},
 {"get_current_version",    0,   NULL, 'g'},
 {"get_module_id",    0,   NULL, 'm'},
@@ -35,6 +35,8 @@ static const struct option long_opts[] = {
 {"progress",    0,   NULL, 'P'},
 {"version",    0,   NULL, 'z'},
 {"debug",    0,   NULL, 'd'},
+{"create_serio_node",    0,   NULL, 'C'},
+{"remove_serio_node",    0,   NULL, 'R'},
 {NULL,       0,   NULL, 0},
 };
 
@@ -52,18 +54,23 @@ static void usage(int errs)
            "  -s,--serionum INT      	/sys/bus/serio/devices/serioX\n"
            "  -g,--get_current_version      Get Firmware Version\n"
            "  -m,--get_module_id  		Get Module ID\n"
-           "  -u,--update firmware      	Update Firmware\n"
-           "  -p,--print message            Print Message\n"
-           "  -P,--print progress           Print Progress\n"
+           "  -u,--update      		Update Firmware\n"
+	   "  -C,--create_serio_node     	Create Serio Driver\n"
+	   "  -R,--remove_serio_node      	Reomove Serio Driver\n"
+           "  -p,--message            	Print Message\n"
+           "  -P,--progress           	Print Progress\n"
 	   "  -z,--version              	Version\n"
            "  -d,--debug               	Debug ps2 Message\n"
            "  -?,--help               	Show this message\n"
            "\n", progname, VERSION, firmware_binaryA, firmware_binaryB, firmware_binaryC);
 
     printf("Example:\n"
+	   "Create Serio Driver  : ./epstps2_updater -C\n"
            "Update firmware      : ./epstps2_updater -a rankA.bin -b rankB.bin -c rankC.bin -u\n"
            "Get Firmware Version : ./epstps2_updater -g\n"
-           "Get Module ID        : ./epstps2_updater -m\n");
+           "Get Module ID        : ./epstps2_updater -m\n"
+	   "Remove Serio Driver  : ./epstps2_updater -R\n");
+
     exit(!!errs);
 }
 
@@ -106,6 +113,12 @@ static int parse_cmdline(int argc, char *argv[])
             break;
         case 'u':
             state = IAP_STATE;
+            break;
+	case 'C':
+            state = CREATE_SERIO_STATE;
+            break;
+	case 'R':
+            state = REMOVE_SERIO_STATE;
             break;
         case 'p':
             print_message = 1;
@@ -337,22 +350,22 @@ static int open_driver_node()
 {
 
     int return_code=0;
-    return_code = create_serioraw_node();
+    /*return_code = create_serioraw_node();
     if(return_code <= 0)
-        return return_code;
+        return return_code;*/
 
     return_code = SERIORAW_NOT_CREATED;
+
     for(int i=0 ;i<100; i++)
     {
         char pch[256];
         sprintf(pch,"%s%d",SERIO_RAW_PATH, i);
-
         if( access( pch, F_OK ) == -1 ) {
             continue;
         }
-        int ret = chmod(pch, S_IRWXU | S_IRWXG | S_IRWXO);
+        /*int ret = chmod(pch, S_IRWXU | S_IRWXG | S_IRWXO);
         if(ret < 0)
-            return_code =  SERIORAW_CANNOT_ACCESS;
+            return_code =  SERIORAW_CANNOT_ACCESS;*/
 
         if( access( pch, R_OK ) == -1 ) {
             return_code =  SERIORAW_CANNOT_READ;
@@ -363,8 +376,10 @@ static int open_driver_node()
         device_fd = open(pch, O_RDWR | O_NONBLOCK );
         if (device_fd == -1) {
             return_code = SERIORAW_CANNOT_OPEN;
+	    return return_code;
         }
-        refresh_data();
+	else
+        	refresh_data();
         if(print_message)
             printf("device_fd = %d\n",device_fd);
         return SERIORAW_RW_OK;
@@ -425,8 +440,39 @@ static int open_device()
 static int close_device()
 {
 
+    if (device_fd==-1)
+	return -1;
+
     close(device_fd);
 
+    /*int result;
+    output_message("Remove Driver Node ...");
+    result = remove_serioraw_node();
+    m_FlashHandle.ERROR_CODE = result;
+    if (result == DRIVER_NOT_FOUND) {
+        output_message("Driver Node not found !");
+        return -1;
+    } else if (result == DRIVER_CANNOT_OPENDIR) {
+        output_message("Permission Denied : Driver Node Can't Open / Not Exits !");
+        return -1;
+    } else if (result == DRVCTL_CANNOT_ACCESS) {
+        output_message("Permission Denied : Root Privilege is Needed!");
+        return -1;
+
+    } else if (result == DRVCTL_NOT_FOUND) {
+        output_message("Permission Denied : Serio Driver drvctl Node Not found !");
+        return -1;
+
+    } else if (result == DRVCTL_CANNOT_WRITE) {
+        output_message("Permission Denied : Serio Driver drvctl Node Can't Access (WRITE) !");
+        return -1;
+    }*/
+    return 0;
+
+}
+
+static int remove_serio()
+{
     int result;
     output_message("Remove Driver Node ...");
     result = remove_serioraw_node();
@@ -451,6 +497,59 @@ static int close_device()
     }
     return 0;
 
+}
+
+static int create_serio()
+{
+    int result=0;
+    result = create_serioraw_node();
+    if(result <= 0)
+    {
+	if (result == DRIVER_NOT_FOUND) {
+        	output_message("Serio Driver Node not found !");
+        	return -1;
+    	} else if (result == DRIVER_CANNOT_OPENDIR) {
+        	output_message("Permission Denied : Serio Driver Node Can't Open / Not Exits !");
+        	return -1;
+
+    	} else if (result == SERIORAW_CANNOT_ACCESS) {
+        	output_message("Permission Denied : Root Privilege is Needed!");
+        	return -1;
+
+    	} else if (result == SERIORAW_CANNOT_READ) {
+        	output_message("Permission Denied : Serio Raw Driver Node Can't Access (READ) !");
+        	return -1;
+
+    	} else if (result == SERIORAW_CANNOT_WRITE) {
+        	output_message("Permission Denied : Serio Raw Driver Node Can't Access (WRITE) !");
+        	return -1;
+    	} else if (result == SERIORAW_CANNOT_OPEN) {
+        	output_message("Permission Denied : Serio Raw Driver Node Failed !");
+        	return -1;
+
+    	} else if (result == DRVCTL_CANNOT_ACCESS) {
+        	output_message("Permission Denied : Root Privilege is Needed!");
+        	return -1;
+
+    	} else if (result == DRVCTL_NOT_FOUND) {
+        	output_message("Permission Denied : Serio Driver drvctl Node Not found !");
+        	return -1;
+
+    	} else if (result == DRVCTL_CANNOT_WRITE) {
+        	output_message("Permission Denied : Serio Driver drvctl Node Can't Access (WRITE) !");
+        	return -1;
+    	} else if (result == NO_SERIO_RAW_DRIVER) {
+        	output_message("Permission Denied : Serio Raw Driver not found !");
+        	return -1;
+    	}
+    	else if (result == SERIORAW_NOT_CREATED) {
+        	output_message("Permission Denied : Serio Driver has not created a Serio Raw Node !");
+        	return -1;
+    	}
+
+   }
+   else
+  	return 0;
 }
 static int read_one_data(unsigned char *readdata)
 {
@@ -499,6 +598,9 @@ static int read_one_data(unsigned char *readdata)
 static int read_data(unsigned char* data, int count)
 {
 
+    if(device_fd==-1)
+	 return -1;
+
     unsigned char readdata;
     for(int i=0; i<count; i++)
     {
@@ -514,8 +616,11 @@ static int read_data(unsigned char* data, int count)
 }
 static int send_data(unsigned char* data, int count)
 {
-
     unsigned char readdata;
+
+    if(device_fd==-1)
+	 return -1;
+
     for(int i = 0; i < count  ; i++)
     {
         if((data[i] >> 4) != 0x0)
@@ -581,6 +686,10 @@ static int ps2_rawctrl_command(unsigned char* cmd, int cmd_count, unsigned char*
 {
 
     int check = -1;
+    
+    if(device_fd==-1)
+	 return -1;
+
     for(int i=0; i<3; i++)
     {
         if(send_data (cmd, cmd_count) > 0)
@@ -608,6 +717,10 @@ static int ps2_rawctrl_command(unsigned char* cmd, int cmd_count, unsigned char*
 static int ps2_rawctrl_command_only(unsigned char* cmd, int cmd_count)
 {
     int check = -1;
+
+    if(device_fd==-1)
+	 return -1;
+
     for(int i=0; i<3; i++)
     {
         if(send_data (cmd, cmd_count) > 0)
@@ -758,7 +871,7 @@ static int load_bin_file(const char* fileName, unsigned long BootCodeStartAddr, 
 {
     int m_FromFile;
 
-    m_FromFile = open(fileName, O_RDWR );
+    m_FromFile = open(fileName, O_RDONLY );
     if(m_FromFile==-1)
     {
         m_FlashHandle.ERROR_CODE = ERROR_OPEN_BIN;
@@ -1486,7 +1599,17 @@ int main(int argc, char *argv[])
     }
     else if(state==GET_SWVER_STATE)
     {
-	printf("Version: %s%s\n", VERSION, VERSION_SUB);
+	printf("Version: %s.%s\n", VERSION, VERSION_SUB);
+	return 0;
+    }
+    else if(state==CREATE_SERIO_STATE)
+    {
+	create_serio();
+	return 0;
+    }
+    else if(state==REMOVE_SERIO_STATE)
+    {
+	remove_serio();
 	return 0;
     }
     else if(state==-1)
@@ -1524,5 +1647,3 @@ int main(int argc, char *argv[])
     return 0;
 
 }
-
-
