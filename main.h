@@ -14,11 +14,13 @@
 #include <getopt.h>
 #include <stdint.h>
 #include <time.h>
+#include <string.h>
 
-#define VERSION "1.5"
-#define VERSION_SUB "0"
 
-#define POLL_TIMEOUT            180000
+#define VERSION "1.6"
+#define VERSION_SUB "3"
+
+#define POLL_TIMEOUT            1800
 #define POLL_TIMEOUT_RETRY      1800
 
 #define START_FLASH             3
