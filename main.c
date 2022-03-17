@@ -13,6 +13,7 @@ static int into_wrap_data;
 static int poll_time_out = POLL_TIMEOUT;
 static FLASH_HANDLER   m_FlashHandle;
 static int file_fd;
+static int page_size=64;
 
 static char *firmware_binaryA = "elan_pst_rankA.bin";	/* firmware blob */
 static char *firmware_binaryB = "elan_pst_rankB.bin";	/* firmware blob */
@@ -314,6 +315,7 @@ static int refresh_data()
 
 
     while (1) {
+
         int err = poll(&pfd, 1, poll_time_out);
         if (err == -1) {
 
@@ -548,8 +550,8 @@ static int create_serio()
     	}
 
    }
-   else
-  	return 0;
+   
+   return 0;
 }
 static int read_one_data(unsigned char *readdata)
 {
@@ -564,7 +566,7 @@ static int read_one_data(unsigned char *readdata)
         int err = poll(&pfd, 1, poll_time_out);
         if (err == -1) {
             if(extended_ps2_exercise)
-                printf("read_one_data poll error\n", *readdata);
+                printf("read_one_data poll error\n");
 
             return READ_WAIT_POLL_ERR;
         }
@@ -626,19 +628,20 @@ static int send_data(unsigned char* data, int count)
         if((data[i] >> 4) != 0x0)
             into_wrap_data=0;
 
+	//printf("send_data 1\n");
         refresh_data();
-
+	//printf("send_data 2\n");	
         if(!write (device_fd, &data[i], 1))
         {
             return WRITE_DATA_FAIL;
         }
-
+	//printf("send_data 3\n");
         if(read_one_data(&readdata)<=0)
         {
             return WRITE_NO_RESPONSE;
         }
 
-
+	//printf("send_data 4\n");
         if(into_wrap_data==1)
         {
             if(readdata != data[i]) {   //NO ECHO
@@ -1118,7 +1121,7 @@ static int flash_data_to_rom(FLASH_INFO flashInfo, unsigned short  *FlashCheckSu
 
     *FlashCheckSum = 0;
 
-    unsigned char Buffer[64] = {0};
+    unsigned char Buffer[512] = {0};
     unsigned int  ReadCount = 0;
     unsigned int PageCount = 0;
     unsigned int ErrorCount = 0;
@@ -1151,7 +1154,7 @@ static int flash_data_to_rom(FLASH_INFO flashInfo, unsigned short  *FlashCheckSu
                     fflush(stdout);
                 }
                 //usleep(100);
-                ReadCount = read (bFile, Buffer, 64);;
+                ReadCount = read (bFile, Buffer, page_size);
 
                 if(ReadCount == 0)
                     break;
@@ -1427,6 +1430,15 @@ static int check_iapchecksum(unsigned short FlashCheckSum)
 
     return m_FlashHandle.ERROR_CODE;
 }
+
+static int get_page_size(int icbody, int iap_version)
+{
+	if((icbody==3)&&(iap_version>=2)) 
+    		return 512;
+
+	return 64;
+}
+
 static int flash_rom(unsigned char *file1, unsigned char *file2, unsigned char *file3)
 {
     unsigned char ic_type;
@@ -1446,10 +1458,15 @@ static int flash_rom(unsigned char *file1, unsigned char *file2, unsigned char *
     if(print_message)
         printf("ReadIAPVersion IC_BODY_TYPE 0x%x INTERFACE_TYPE 0x%x  IAP_VERSION 0x%x\n", ic_type,interface,iap_version);
 
+    int icbody =  ic_type & 0x000F;
+    page_size = get_page_size(icbody, iap_version);
+
     int rank = ( (ic_type >> 4) & 0x000F );
     if(print_progress)
+    {
         printf("Rank : %d\n", rank);
-
+	printf("icbody: %d page_size : %d\n", icbody, page_size);
+    }
     if(rank==1)
         flashInfo.ImagePathFile = file1;
     else if(rank==2)
